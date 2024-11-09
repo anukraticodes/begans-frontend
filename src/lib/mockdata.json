@@ -1,0 +1,53 @@
+{
+    "chats": [
+      {
+        "id": "1",
+        "title": "Nature Photography Ideas",
+        "messages": [
+          {
+            "id": 1,
+            "content": "Hey! Can you suggest some creative ideas for nature photography?",
+            "role": "user"
+          },
+          {
+            "id": 2,
+            "content": "Sure! How about capturing macro shots of dew drops on leaves?",
+            "role": "assistant"
+          }
+        ]
+      },
+      {
+        "id": "2",
+        "title": "Travel Destination Suggestions",
+        "messages": [
+          {
+            "id": 1,
+            "content": "I'm planning a vacation. Any suggestions?",
+            "role": "user"
+          },
+          {
+            "id": 2,
+            "content": "How about exploring the scenic beauty of Iceland?",
+            "role": "assistant"
+          }
+        ]
+      },
+      {
+        "id": "3",
+        "title": "AI in Healthcare",
+        "messages": [
+          {
+            "id": 1,
+            "content": "Can you tell me about the impact of AI in healthcare?",
+            "role": "user"
+          },
+          {
+            "id": 2,
+            "content": "AI is transforming healthcare through predictive analytics and personalized treatment.",
+            "role": "assistant"
+          }
+        ]
+      }
+    ]
+  }
+  
