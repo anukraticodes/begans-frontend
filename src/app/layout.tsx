@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
-import { ThemeProvider } from '@/components/theme-provider'
+import { ThemeProviderWrapper } from '@/components/theme-provider-wrapper'; // Renamed for clarity
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -21,19 +21,16 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >  
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
-
-        {children}
-        </ThemeProvider>
-
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {/* Wrap content with ThemeProviderWrapper */}
+        <ThemeProviderWrapper>
+          {children}
+        </ThemeProviderWrapper>
       </body>
     </html>
   );

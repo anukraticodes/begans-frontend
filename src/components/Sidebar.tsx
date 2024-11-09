@@ -11,7 +11,6 @@ import { loadMockData, Chat } from '@/lib/loadData'
 
 interface ChatSidebarProps {
   activeChat: string
-  onChatSelect: (chatId: string) => void
 }
 
 export function ChatSidebar({ activeChat }: ChatSidebarProps) {
@@ -25,20 +24,17 @@ export function ChatSidebar({ activeChat }: ChatSidebarProps) {
   }, [])
 
   const handleNewChat = () => {
-    // Generate a new unique ID for the chat
     const newChatId = `new-${Date.now()}`
     router.push(`/new-chat`)
   }
 
   const handleChatSelect = (chatId: string) => {
-    // Redirect to the specific chat's page
     router.push(`/c/${chatId}`)
   }
 
   return (
     <div className="w-80 border-r border-border bg-background">
       <div className="p-4 space-y-4">
-        {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Avatar className="h-8 w-8">
@@ -53,13 +49,11 @@ export function ChatSidebar({ activeChat }: ChatSidebarProps) {
           </Button>
         </div>
 
-        {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8 bg-background" placeholder="Search conversations..." />
         </div>
 
-        {/* Chats List */}
         <ScrollArea className="h-[calc(100vh-8rem)]">
           <div className="space-y-2 p-2">
             {chats.map((chat) => (
@@ -67,7 +61,7 @@ export function ChatSidebar({ activeChat }: ChatSidebarProps) {
                 key={chat.id}
                 variant={chat.id === activeChat ? 'secondary' : 'ghost'}
                 className="w-full justify-start gap-2 text-left"
-                onClick={() => handleChatSelect(chat.id)} 
+                onClick={() => handleChatSelect(chat.id)}
               >
                 <ImageIcon className="h-4 w-4" />
                 <div className="flex-1 overflow-hidden">
