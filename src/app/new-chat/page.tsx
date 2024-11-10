@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MAX_CHARS = 1000;
-const MIN_TEXTAREA_HEIGHT = 50;
+const MIN_TEXTAREA_HEIGHT = 30;
 const MAX_TEXTAREA_HEIGHT = 200;
 
 const Page = () => {
@@ -19,7 +19,7 @@ const Page = () => {
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
 
   // Load theme from local storage on initial render
   useEffect(() => {
@@ -102,7 +102,7 @@ const Page = () => {
             initial={{ y: 20, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.5 }}
-            className="w-full max-w-2xl relative flex flex-col items-center bg-muted rounded-2xl shadow-inner p-4 pl-1 pr-1 mb-4"
+            className="w-full max-w-2xl relative flex flex-col items-center bg-muted rounded-2xl shadow-inner p-4 pt-2 pl-1 pr-1 mb-4"
           >
             <div className="w-full relative">
               <Textarea
@@ -130,7 +130,7 @@ const Page = () => {
                 {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </Button>
             </div>
-            <div className="w-full mt-2 flex items-center justify-between text-xs text-muted-foreground">
+            <div className="w-full flex items-center justify-between text-xs text-muted-foreground">
               <span>{inputValue.length} / {MAX_CHARS}</span>
             </div>
           </motion.div>
