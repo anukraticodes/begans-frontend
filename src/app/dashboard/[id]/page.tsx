@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { Bell, Camera, ChevronRight, Shield, Upload, X, Box, Layers } from 'lucide-react'
+import { ChevronRight, Bell, Camera, Shield, Upload, X, Box, Layers } from 'lucide-react'
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
@@ -33,44 +33,42 @@ const categoryData = [
 const COLORS = ['#3B82F6', '#6366F1', '#8B5CF6']
 
 export default function MilitaryVisionDashboard() {
-  const [showDetection, setShowDetection] = useState(true);
+  const [showSidebar, setShowSidebar] = useState(false)
+  const [showDetection, setShowDetection] = useState(true)
   const [showAnalytics, setShowAnalytics] = useState(false)
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
   const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
-  const params = useParams()  // Using useParams to get route parameters
-  const chatId = params.id as string  // Get the chat ID from the params
+  const params = useParams()
+  const chatId = params.id as string
   const [chatHistory, setChatHistory] = useState([
     { text: "Analyze this drone footage for vehicles", isUser: false },
-    { text: "I’ve detected 2 military vehicles in the northern sector. Confidence level is 95%. Would you like detailed positioning?", isUser: false },
-  ]);
-  const chatContainerRef = useRef<HTMLDivElement>(null);
+    { text: "I've detected 2 military vehicles in the northern sector. Confidence level is 95%. Would you like detailed positioning?", isUser: false },
+  ])
+  const chatContainerRef = useRef<HTMLDivElement>(null)
+  const sidebarTriggerRef = useRef<HTMLDivElement>(null)
 
-  // Scroll to the bottom whenever chatHistory updates
   useEffect(() => {
     if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
     }
-  }, [chatHistory]);
+  }, [chatHistory])
+
   const handleSendMessage = () => {
     if (message.trim()) {
       setChatHistory([
         ...chatHistory,
         { text: message, isUser: true },
-        { text: `AI Response: ${message}`, isUser: false }, // Basic response simulation
-      ]);
-      setMessage(""); // Clear the input
+        { text: `AI Response: ${message}`, isUser: false },
+      ])
+      setMessage("")
     }
-  };
+  }
 
   const handleCaptureImage = () => {
-    alert("Capture image functionality is not implemented yet.");
-  };
-  useEffect(() => {
-    // Here you would typically fetch the chat data based on the chatId
-    console.log(`Fetching data for chat ${chatId}`)
-  }, [chatId])
+    alert("Capture image functionality is not implemented yet.")
+  }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -88,20 +86,47 @@ export default function MilitaryVisionDashboard() {
   }
 
 
+  const handleMouseEnter = () => setShowSidebar(true);
+  const handleMouseLeave = (event: React.MouseEvent) => {
+    // Check if mouse is leaving both Vision Intelligence and Sidebar
+    if (
+      !event.relatedTarget ||
+      !(event.relatedTarget as HTMLElement).closest(".sidebar")
+    ) {
+      setShowSidebar(false);
+    }
+  };
   return (
     <div className="flex min-h-screen bg-background dark:bg-zinc-900">
-      <Sidebar />
+      <div
+      className="flex min-h-screen bg-background dark:bg-zinc-900"
+      onMouseLeave={handleMouseLeave}
+    >
+      {/* Sidebar */}
+      <Sidebar isVisible={showSidebar} />
+      </div>
       <div className="flex-1 flex flex-col">
         <header className="flex items-center justify-between p-4 border-b dark:border-zinc-700">
-          <div>
-            <h1 className="text-2xl font-bold dark:text-white">Vision Analysis System</h1>
-            <div className="mt-1 text-sm text-green-600 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1 rounded-full inline-block">
+          <div className="flex items-center">
+            <div 
+              ref={sidebarTriggerRef}
+              className="relative z-50"
+              onMouseEnter={handleMouseEnter}
+              >
+              <h1 className={`text-2xl font-bold cursor-pointer transition-colors duration-200 ${
+          showSidebar ? "text-white " : "dark:text-white"
+        }`}>
+                Vision Intelligence
+              </h1>
+            </div>
+            <div className="mt-1 ml-10 text-sm text-green-600 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1 rounded-full inline-block">
               All Detection Models Active
             </div>
           </div>
           <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" className="dark:text-white dark:border-zinc-700">
               <Bell className="h-4 w-4" />
+              <span className="sr-only">Notifications</span>
             </Button>
             <Avatar>
               <AvatarImage src="/placeholder.svg" alt="User avatar" />
@@ -111,7 +136,6 @@ export default function MilitaryVisionDashboard() {
         </header>
 
         <div className="flex flex-1 gap-4 pt-4 pl-4 pr-4">
-          {/* Main Analysis Area */}
           <div className="flex-1">
             <div className="mb-4">
               <h2 className="text-xl font-semibold mb-4 dark:text-white">Image Analysis</h2>
@@ -131,7 +155,7 @@ export default function MilitaryVisionDashboard() {
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="original" className="mt-4">
-                  <Card className="border-2 border-dashed bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 max-h-[270px] mx-auto">
+                  <Card className={`border-2 border-dashed bg-zinc-50 dark:bg-zinc-800 dark:border-zinc-700 mx-auto transition-all duration-300 ease-in-out ${uploadedImage ? 'max-h-[200px]' : 'max-h-[400px]'}`}>
                     <CardContent className="flex flex-col items-center justify-center py-6 min-h-[200px]">
                       {uploadedImage ? (
                         <div className="relative w-full h-[150px]">
@@ -162,11 +186,9 @@ export default function MilitaryVisionDashboard() {
                     </CardContent>
                   </Card>
                 </TabsContent>
-
               </Tabs>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 pt-0 bg-white dark:bg-zinc-800 rounded-lg shadow-sm">
               <div>
                 <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-1">
@@ -198,71 +220,76 @@ export default function MilitaryVisionDashboard() {
               </div>
             </div>
 
-            {/* Chat Interface */}
-            <Card className="mt-4">
-      <CardContent className="p-4">
-        {/* Chat Messages Section */}
-        <div
-          ref={chatContainerRef}
-          className="bg-gray-50 dark:bg-zinc-700 p-4 rounded-lg mb-4 overflow-y-auto h-[250px] custom-scrollbar"
-        >
-          {chatHistory.map((message, index) => (
-            <div
-              key={index}
-              className={`p-3 rounded-lg mb-2 break-words ${
-                message.isUser
-                  ? "bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 self-end ml-auto text-right"
-                  : "bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 self-start mr-auto text-left"
-              }`}
-              style={{ 
-                width: "fit-content",
-                maxWidth: "700px" }} // Prevents messages from touching edges
-            >
-              <p>{message.text}</p>
-            </div>
-          ))}
-        </div>
+            <Card className={`
+              mt-4 transition-all duration-300 ease-in-out
+              ${uploadedImage ? 'opacity-100 translate-y-0' : 'opacity-50 translate-y-4 pointer-events-none'}
+            `}>
+              <CardContent className="p-4">
+                <div
+                  ref={chatContainerRef}
+                  className="bg-gray-50 dark:bg-zinc-700 p-4 rounded-lg mb-4 overflow-y-auto h-[250px] custom-scrollbar"
+                >
+                  {chatHistory.map((message, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg mb-2 break-words ${
+                        message.isUser
+                          ? "bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 self-end ml-auto text-right"
+                          : "bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 self-start mr-auto text-left"
+                      }`}
+                      style={{ 
+                        width: "fit-content",
+                        maxWidth: "700px"
+                      }}
+                    >
+                      <p>{message.text}</p>
+                    </div>
+                  ))}
+                </div>
 
-        {/* Input Section */}
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="icon"
-            className="dark:border-zinc-700 dark:text-white"
-            onClick={handleCaptureImage}
-          >
-            <Camera className="h-4 w-4" />
-          </Button>
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            className="flex-1 px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white"
-            placeholder="Type your message..."
-          />
-          <Button
-            variant="primary"
-            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
-            onClick={handleSendMessage}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="dark:border-zinc-700 dark:text-white"
+                    onClick={handleCaptureImage}
+                  >
+                    <Camera className="h-4 w-4" />
+                    <span className="sr-only">Capture Image</span>
+                  </Button>
+                  <input
+                    type="text"
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    className="flex-1 px-3 py-2 border rounded-md dark:bg-zinc-700 dark:border-zinc-600 dark:text-white"
+                    placeholder="Type your message..."
+                  />
+                  <Button
+                    variant="primary"
+                    className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
+                    onClick={handleSendMessage}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                    <span className="sr-only">Send Message</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
           <Button
             variant="outline"
             size="icon"
             onClick={() => setShowDetection(!showDetection)}
-            className="dark:text-white dark:border-zinc-700"
+            className="dark:text-white dark:border-zinc-700 transition-transform duration-300 ease-in-out"
           >
-            {showDetection ? <ChevronRight className="h-4 w-4" /> : <ChevronRight className="h-4 w-4 transform rotate-180" />}
+            <ChevronRight className={`h-4 w-4 transition-transform duration-300 ${showDetection ? '' : 'rotate-180'}`} />
+            <span className="sr-only">{showDetection ? 'Hide Detection Results' : 'Show Detection Results'}</span>
           </Button>
-          {/* Right Sidebar */}
-          {showDetection && (
-          <div className="w-full lg:w-80 mt-4 lg:mt-0">
+          <div className={`
+            w-full lg:w-80 mt-4 lg:mt-0
+            transition-all duration-300 ease-in-out
+            ${showDetection ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}
+          `}>
             <Card className="bg-white dark:bg-zinc-800 rounded-lg shadow-sm">
               <CardHeader className="flex items-center justify-between">
                 <CardTitle className="text-lg font-semibold dark:text-white">Detection Results</CardTitle>
@@ -280,7 +307,7 @@ export default function MilitaryVisionDashboard() {
                           <span className="text-sm dark:text-gray-300">Military Vehicle</span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">x2</span>
                         </div>
-                        <Progress value={98} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorclassname="bg-blue-600 dark:bg-blue-400" />
+                        <Progress value={98} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorClassName="bg-blue-600 dark:bg-blue-400" />
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">98% confidence</div>
                       </div>
                       <div>
@@ -288,7 +315,7 @@ export default function MilitaryVisionDashboard() {
                           <span className="text-sm dark:text-gray-300">Personnel</span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">x4</span>
                         </div>
-                        <Progress value={95} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorclassname="bg-blue-600 dark:bg-blue-400" />
+                        <Progress value={95} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorClassName="bg-blue-600 dark:bg-blue-400" />
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">95% confidence</div>
                       </div>
                       <div>
@@ -296,7 +323,7 @@ export default function MilitaryVisionDashboard() {
                           <span className="text-sm dark:text-gray-300">Building</span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">x1</span>
                         </div>
-                        <Progress value={92} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorclassname="bg-blue-600 dark:bg-blue-400" />
+                        <Progress value={92} className="h-1 bg-blue-100 dark:bg-blue-900" indicatorClassName="bg-blue-600 dark:bg-blue-400" />
                         <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">92% confidence</div>
                       </div>
                     </div>
@@ -365,10 +392,8 @@ export default function MilitaryVisionDashboard() {
               </CardContent>
             </Card>
           </div>
-          )}
         </div>
 
-        {/* Advanced Analytics Dialog */}
         <Dialog open={showAnalytics} onOpenChange={setShowAnalytics}>
           <DialogContent className="max-w-4xl">
             <DialogHeader>
@@ -376,13 +401,13 @@ export default function MilitaryVisionDashboard() {
                 <DialogTitle className="text-xl font-semibold">Advanced Analytics Dashboard</DialogTitle>
                 <Button variant="ghost" size="icon" onClick={() => setShowAnalytics(false)}>
                   <X className="h-4 w-4" />
+                  <span className="sr-only">Close</span>
                 </Button>
               </div>
             </DialogHeader>
             
             <div className="grid gap-6">
               <div className="grid md:grid-cols-2 gap-6">
-                {/* Detection Distribution */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Detection Distribution</CardTitle>
@@ -425,7 +450,6 @@ export default function MilitaryVisionDashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Object Categories */}
                 <Card>
                   <CardHeader>
                     <CardTitle>Object Categories</CardTitle>
@@ -462,7 +486,6 @@ export default function MilitaryVisionDashboard() {
                 </Card>
               </div>
 
-              {/* Historical Analysis */}
               <Card>
                 <CardHeader>
                   <CardTitle>Historical Analysis</CardTitle>
