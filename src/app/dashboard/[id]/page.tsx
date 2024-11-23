@@ -5,7 +5,7 @@ import { ChevronRight, Bell, Camera, Shield, Upload, X, Box, Layers } from 'luci
 import Image from 'next/image'
 import { useParams } from 'next/navigation'
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, PieChart, Pie, Cell, Tooltip, Legend } from "recharts"
-
+import { motion } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -98,13 +98,21 @@ export default function MilitaryVisionDashboard() {
   };
   return (
     <div className="flex min-h-screen bg-background dark:bg-zinc-900">
+      <motion.div
+      className="flex min-h-screen bg-background dark:bg-zinc-900"
+      initial={{ opacity: 0, x: -50 }}
+      animate={{ opacity: 1, x: 0 }}
+      exit={{ opacity: 0, x: -50 }}
+      transition={{ duration: 0.5, ease: 'easeInOut' }}
+    >
       <div
       className="flex min-h-screen bg-background dark:bg-zinc-900"
       onMouseLeave={handleMouseLeave}
-    >
+      >
       {/* Sidebar */}
       <Sidebar isVisible={showSidebar} />
       </div>
+    </motion.div>
       <div className="flex-1 flex flex-col">
         <header className="flex items-center justify-between p-4 border-b dark:border-zinc-700">
           <div className="flex items-center">
