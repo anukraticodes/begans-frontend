@@ -26,7 +26,7 @@ export function Sidebar({ isVisible }: { isVisible: boolean }) {
 
   const handleNewAnalysis = () => {
     const newChatId = generateUniqueId()
-    router.push(`/dashboard/${newChatId}`)
+    router.push(`/dashboard`)
   }
 
   return (
