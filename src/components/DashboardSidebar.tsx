@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter, useParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { MessageSquare, Box } from 'lucide-react'
+import { getCookie } from 'cookies-next'
 
 import { Button } from "@/components/ui/button"
 
@@ -13,19 +14,44 @@ type Chat = {
   title: string;
 }
 
-const recentChats: Chat[] = [
-  { id: '12345-67890-abcde-fghij', title: 'Drone Surveillance #1' },
-  { id: '54321-09876-zyxwv-utsrq', title: 'Night Patrol #3' },
-  { id: 'abcde-fghij-12345-67890', title: 'Perimeter Scan' },
-]
-
 export function Sidebar({ isVisible }: { isVisible: boolean }) {
   const router = useRouter()
   const params = useParams()
   const currentChatId = params.id as string
+  const [recentChats, setRecentChats] = useState<Chat[]>([])
+
+  useEffect(() => {
+    const fetchChats = async () => {
+      const token = getCookie('token') // Get the token from cookies
+      if (!token) {
+        console.error('No token found')
+        return
+      }
+
+      try {
+        const response = await fetch('http://localhost:8000/api/chat/context', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch chats')
+        }
+
+        const data = await response.json()
+        setRecentChats(data)
+      } catch (error) {
+        console.error('Error fetching chats:', error)
+      }
+    }
+
+    fetchChats()
+  }, [])
 
   const handleNewAnalysis = () => {
-    const newChatId = generateUniqueId()
     router.push(`/dashboard`)
   }
 
@@ -36,7 +62,7 @@ export function Sidebar({ isVisible }: { isVisible: boolean }) {
       animate={{ x: isVisible ? 0 : '-100%' }}
       exit={{ x: '-100%' }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      >
+    >
       <div className="flex items-center justify-between mb-8">
         <h3 className="text-lg font-bold"></h3>
       </div>
@@ -66,9 +92,4 @@ export function Sidebar({ isVisible }: { isVisible: boolean }) {
   )
 }
 
-function generateUniqueId() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
-    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8)
-    return v.toString(16)
-  })
-}
+

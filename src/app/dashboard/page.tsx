@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { ChevronRight, Bell, Send, ImagePlus, X } from 'lucide-react'
 import Image from 'next/image'
-import { useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -12,17 +11,19 @@ import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/DashboardSidebar"
 import { Textarea } from "@/components/ui/textarea"
 import Link from 'next/link'
+import { getCookie } from 'cookies-next'
+import { useRouter } from 'next/navigation'
+
 export default function MilitaryVisionDashboard() {
   const [showSidebar, setShowSidebar] = useState(false)
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null)
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null)
   const [message, setMessage] = useState('')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
-  const params = useParams()
-  const chatId = params.id as string
+  const router = useRouter()
 
-  const handleNewChat = () => {
+  const handleNewChat = async () => {
     if (!message && !uploadedImage) {
       toast({
         title: "Input required",
@@ -32,22 +33,58 @@ export default function MilitaryVisionDashboard() {
       return
     }
 
-    toast({
-      title: "Analysis Started",
-      description: "Your request has been sent for processing.",
-    })
-    setMessage('')
-    setUploadedImage(null)
+    const token = getCookie('token')
+    if (!token) {
+      toast({
+        title: "Authentication Error",
+        description: "Please log in to start a new analysis.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    const formData = new FormData()
+    if (message) formData.append('message', message)
+    if (uploadedImage) formData.append('image', uploadedImage)
+    console.log(formData)
+    try {
+      const response = await fetch('http://localhost:8000/api/chat/context', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to start new chat')
+      }
+
+      const data = await response.json()
+
+      toast({
+        title: "Analysis Started",
+        description: "Your request has been sent for processing.",
+      })
+      setMessage('')
+      setUploadedImage(null)
+      
+      // Redirect to the new chat page
+      router.push(`/dashboard/${data.id}`)
+    } catch (error) {
+      console.error('Error starting new chat:', error)
+      toast({
+        title: "Error",
+        description: "Failed to start new analysis. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setUploadedImage(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
+      setUploadedImage(file)
     }
   }
 
@@ -112,10 +149,8 @@ export default function MilitaryVisionDashboard() {
               <h1 className={`text-2xl font-bold cursor-pointer transition-colors duration-200 ${
                 showSidebar ? "text-white " : "dark:text-white"
               }`}>
-
-              {/* Link Redirecting to /dashboard */}
-              <Link href="/dashboard">
-                Vision Intelligence
+                <Link href="/dashboard">
+                  Vision Intelligence
                 </Link>
               </h1>
             </div>
@@ -155,7 +190,7 @@ export default function MilitaryVisionDashboard() {
                   className="relative aspect-video"
                 >
                   <Image
-                    src={uploadedImage}
+                    src={URL.createObjectURL(uploadedImage)}
                     alt="Uploaded image"
                     layout="fill"
                     objectFit="contain"
@@ -217,3 +252,4 @@ export default function MilitaryVisionDashboard() {
     </div>
   )
 }
+

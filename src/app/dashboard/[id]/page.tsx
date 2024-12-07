@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useRef, useEffect } from 'react'
-import { ChevronRight, Bell, Camera, Shield, Upload, X, Box, Layers } from 'lucide-react'
+import { ChevronRight, Bell, Upload, X, Box, Layers } from 'lucide-react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
@@ -15,7 +15,13 @@ import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
 import { Sidebar } from "@/components/DashboardSidebar"
-import { Router } from 'next/router'
+import { getCookie } from 'cookies-next'
+interface ChatMessage {
+  sender: 'bot' | 'user';
+  message: string | null;
+  image: string | null;
+  timestamp: string;
+}
 
 const detectionData = [
   { month: 'Jan', value: 65 },
@@ -44,12 +50,52 @@ export default function MilitaryVisionDashboard() {
   const { toast } = useToast()
   const params = useParams()
   const chatId = params.id as string
-  const [chatHistory, setChatHistory] = useState([
-    { text: "Analyze this drone footage for vehicles", isUser: false },
-    { text: "I've detected 2 military vehicles in the northern sector. Confidence level is 95%. Would you like detailed positioning?", isUser: false },
-  ])
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([])
   const chatContainerRef = useRef<HTMLDivElement>(null)
   const sidebarTriggerRef = useRef<HTMLDivElement>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    fetchChatHistory()
+  }, [chatId])
+
+  const fetchChatHistory = async () => {
+    const token = getCookie('token');
+    if (!token) {
+      toast({
+        title: "Authentication Error",
+        description: "Please log in to view chat history.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      const response = await fetch(`http://localhost:8000/api/chat/${chatId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat history');
+      }
+
+      const data = await response.json();
+      setChatHistory(data.chats);
+    } catch (error) {
+      console.error('Error fetching chat history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load chat history. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -57,29 +103,85 @@ export default function MilitaryVisionDashboard() {
     }
   }, [chatHistory])
 
-  const handleSendMessage = () => {
-    if (message.trim()) {
-      setChatHistory([
-        ...chatHistory,
-        { text: message, isUser: true },
-        { text: `AI Response: ${message}`, isUser: false },
-      ])
-      setMessage("")
-    }
-  }
+  const handleSendMessage = async () => {
+    if (message.trim() || uploadedImage) {
+      const token = getCookie('token');
+      if (!token) {
+        toast({
+          title: "Authentication Error",
+          description: "Please log in to send messages.",
+          variant: "destructive",
+        });
+        return;
+      }
+      try {
+        setIsLoading(true);
 
-  const handleCaptureImage = () => {
-    alert("Capture image functionality is not implemented yet.")
-  }
+        let imageData = null;
+        if (uploadedImage) {
+          //Convert image to base 64
+          const base64Image = uploadedImage.split(',')[1];
+          console.log(base64Image);
+          imageData = base64Image;
+        }
+
+        const payload = {
+          message: message.trim() || null,
+          image: imageData
+        };
+
+        const response = await fetch(`http://localhost:8000/api/chat/${chatId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to send message');
+        }
+
+        const newMessages = await response.json();
+        setChatHistory(prevHistory => [...prevHistory, ...newMessages]);
+        setMessage("");
+        setUploadedImage(null);
+      } catch (error) {
+        console.error('Error sending message:', error);
+        toast({
+          title: "Error",
+          description: "Failed to send message. Please try again.",
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    }
+  };
 
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
-    if (file) {
+    if (file && file.type.startsWith('image/')) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({
+          title: "File too large",
+          description: "Please upload an image smaller than 5MB.",
+          variant: "destructive",
+        })
+        return
+      }
       const reader = new FileReader()
       reader.onload = (e) => {
         setUploadedImage(e.target?.result as string)
       }
       reader.readAsDataURL(file)
+    } else {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+        variant: "destructive",
+      })
     }
   }
 
@@ -124,11 +226,9 @@ export default function MilitaryVisionDashboard() {
               <h1 className={`text-2xl font-bold cursor-pointer transition-colors duration-200 ${
                 showSidebar ? "text-white " : "dark:text-white"
               }`}>
-
-              {/* Link Redirecting to /dashboard */}
               <Link href="/dashboard">
                 Vision Intelligence
-                </Link>
+              </Link>
               </h1>
             </div>
             <div className="mt-1 ml-10 text-sm text-green-600 bg-green-50 dark:bg-green-900 dark:text-green-300 px-3 py-1 rounded-full inline-block">
@@ -147,19 +247,15 @@ export default function MilitaryVisionDashboard() {
           </div>
         </header>
         <AnimatePresence>
-
         <div className="flex flex-1 gap-4 p-4 overflow-hidden">
-        <motion.div
-                initial={{ opacity: 0, x: 300 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 300 }}
-                transition={{ duration: 0.3, ease: 'easeInOut' }}
-                className="flex-1 overflow-hidden"
-              >
-            <Card className={`
-              h-full 
-              ${uploadedImage ? 'opacity-100 translate-y-0' : 'opacity-100 translate-y-0'}
-            `}>
+          <motion.div
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="flex-1 overflow-hidden"
+          >
+            <Card className={`h-full ${uploadedImage ? 'opacity-100 translate-y-0' : 'opacity-100 translate-y-0'}`}>
               <CardContent className="p-4 h-full flex flex-col">
                 <div
                   ref={chatContainerRef}
@@ -169,7 +265,7 @@ export default function MilitaryVisionDashboard() {
                     <div
                       key={index}
                       className={`p-3 rounded-lg mb-2 break-words ${
-                        message.isUser
+                        message.sender === 'user'
                           ? "bg-blue-50 dark:bg-blue-900 text-blue-900 dark:text-blue-100 self-end ml-auto text-right"
                           : "bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-200 self-start mr-auto text-left"
                       }`}
@@ -178,21 +274,58 @@ export default function MilitaryVisionDashboard() {
                         maxWidth: "70%"
                       }}
                     >
-                      <p>{message.text}</p>
+                      {message.message && <p>{message.message}</p>}
+                      {message.image && (
+                        <Image
+                          src={`http://localhost:8000/images/${message.image}`}
+                          alt="Uploaded image"
+                          width={200}
+                          height={200}
+                          className="mt-2 rounded-md"
+                        />
+                      )}
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {new Date(message.timestamp).toLocaleString()}
+                      </p>
                     </div>
                   ))}
                 </div>
+
+                {uploadedImage && (
+                  <div className="relative mb-2">
+                    <img
+                      src={uploadedImage}
+                      alt="Uploaded preview"
+                      className="max-h-32 rounded-md"
+                    />
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      className="absolute top-1 right-1"
+                      onClick={() => setUploadedImage(null)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
 
                 <div className="flex gap-2 mt-auto">
                   <Button
                     variant="outline"
                     size="icon"
                     className="dark:border-zinc-700 dark:text-white"
-                    onClick={handleCaptureImage}
+                    onClick={triggerFileInput}
                   >
-                    <Camera className="h-4 w-4" />
-                    <span className="sr-only">Capture Image</span>
+                    <Upload className="h-4 w-4" />
+                    <span className="sr-only">Upload Image</span>
                   </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
                   <input
                     type="text"
                     value={message}
@@ -204,8 +337,13 @@ export default function MilitaryVisionDashboard() {
                     variant="primary"
                     className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800"
                     onClick={handleSendMessage}
+                    disabled={isLoading}
                   >
-                    <ChevronRight className="h-4 w-4" />
+                    {isLoading ? (
+                      <span className="animate-spin">⌛</span>
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                     <span className="sr-only">Send Message</span>
                   </Button>
                 </div>
@@ -478,3 +616,4 @@ export default function MilitaryVisionDashboard() {
     </div>
   )
 }
+
