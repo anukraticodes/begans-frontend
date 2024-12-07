@@ -18,7 +18,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Progress } from '@/components/ui/progress'
 import { LineChart, Play, CircleStopIcon as Stop } from 'lucide-react'
 import { CustomSlider } from '@/components/ui/custom-slider'
-
+import axios from 'axios'
 // Placeholder component for the graph
 const Graph = () => (
   <div className="w-full h-full flex items-center justify-center bg-gray-100">
@@ -69,32 +69,32 @@ export default function TrainPage() {
       setShellOutput([`Starting ${trainingModel} training...`]);
       console.log("Training started");
 
-      websocketRef.current = new WebSocket('ws://url'); 
+      // websocketRef.current = new WebSocket('ws://url'); 
 
-      websocketRef.current.onopen = () => {
-        console.log('WebSocket connection opened');
-        websocketRef.current?.send(JSON.stringify({ action: 'startTraining', model: trainingModel }));
-      };
+      // websocketRef.current.onopen = () => {
+      //   console.log('WebSocket connection opened');
+      //   websocketRef.current?.send(JSON.stringify({ action: 'startTraining', model: trainingModel }));
+      // };
 
-      websocketRef.current.onmessage = (event) => {
-        const message = JSON.parse(event.data);
-        console.log(message);
-        setShellOutput(prev => [...prev, message]);
-      };
+      // websocketRef.current.onmessage = (event) => {
+      //   const message = JSON.parse(event.data);
+      //   console.log(message);
+      //   setShellOutput(prev => [...prev, message]);
+      // };
 
-      websocketRef.current.onclose = () => {
-        console.log('WebSocket connection closed');
-      };
+      // websocketRef.current.onclose = () => {
+      //   console.log('WebSocket connection closed');
+      // };
 
-      websocketRef.current.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        toast({
-          title: "Error",
-          description: "An error occurred with the WebSocket connection.",
-          variant: "destructive",
-        });
-        handleStopTraining();
-      };
+      // websocketRef.current.onerror = (error) => {
+      //   console.error('WebSocket error:', error);
+      //   toast({
+      //     title: "Error",
+      //     description: "An error occurred with the WebSocket connection.",
+      //     variant: "destructive",
+      //   });
+      //   handleStopTraining();
+      // };
     };
 
     if (isTraining) {
@@ -113,40 +113,12 @@ export default function TrainPage() {
       }
     };
   }, [isTraining, trainingModel]);
-  const simulateFileUpload = (file: File, fileType: 'imagesZip' | 'jsonFile') => {
-    const totalSize = file.size
-    let uploadedSize = 0
-    const chunkSize = 1024 * 1024 * 5 // 1MB chunks
-
-    const upload = () => {
-      if (uploadedSize < totalSize) {
-        uploadedSize += chunkSize
-        if (uploadedSize > totalSize) uploadedSize = totalSize
-        const progress = Math.round((uploadedSize / totalSize) * 100)
-        setUploadProgress(prev => ({ ...prev, [fileType]: progress }))
-        setTimeout(upload, 100) // Simulate network delay
-      }
-    }
-
-    upload()
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'imagesZip' | 'jsonFile') => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (fileType === 'imagesZip') {
-        setImagesZip(file)
-      } else {
-        setJsonFile(file)
-      }
-      simulateFileUpload(file, fileType)
-    }
-  }
 
 
 
-  const handleStartTraining = () => {
-    if (!trainingModel) { // Replace with your actual file upload check
+
+  const handleStartTraining = async () => {
+    if (!trainingModel) {
       toast({
         title: "Error",
         description: "Please upload at least one file (Images ZIP or JSON) before starting training.",
@@ -155,7 +127,74 @@ export default function TrainPage() {
       return;
     }
 
+    if (imagesZip) {
+      console.log('Uploading images ZIP file...');
+      await uploadFileInChunks(imagesZip, 'imagesZip');
+    }
+    if (jsonFile) {
+      console.log('Uploading JSON file...');
+      await uploadFileInChunks(jsonFile, 'jsonFile');
+    }
+
     setIsTraining(true);
+  };
+  const uploadFileInChunks = async (file: File, fileType: 'imagesZip' | 'jsonFile') => {
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5 MB
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    for (let chunkNumber = 0; chunkNumber < totalChunks; chunkNumber++) {
+      const start = chunkNumber * CHUNK_SIZE;
+      const end = Math.min(file.size, start + CHUNK_SIZE);
+      const chunk = file.slice(start, end);
+
+      const formData = new FormData();
+      formData.append("file", chunk);
+      formData.append("chunk_number", (chunkNumber + 1).toString());
+      formData.append("total_chunks", totalChunks.toString());
+      formData.append("file_name", file.name);
+      formData.append("file_type", fileType);
+
+      try {
+        console.log(`Uploading chunk ${chunkNumber + 1}/${totalChunks}`);
+        const response = await axios.post("http://localhost:8000/api/train/upload", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+
+        if (response.status !== 200) {
+          throw new Error('Failed to upload chunk');
+        }
+
+        setUploadProgress(prev => ({
+          ...prev,
+          [fileType]: Math.round(((chunkNumber + 1) / totalChunks) * 100),
+        }));
+
+        if (chunkNumber === totalChunks - 1) {
+          const data = response.data;
+          console.log(`File uploaded successfully with ID: ${data.id}`);
+          setShellOutput(prev => [...prev, `File uploaded successfully with ID: ${data.id}`]);
+        }
+      } catch (err) {
+        console.error("Error uploading chunk:", err);
+        toast({
+          title: "Error",
+          description: `An error occurred while uploading the file: ${err.message}`,
+          variant: "destructive",
+        });
+        break;
+      }
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, fileType: 'imagesZip' | 'jsonFile') => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (fileType === 'imagesZip') {
+        setImagesZip(file);
+      } else {
+        setJsonFile(file);
+      }
+    }
   };
 
   const handleStopTraining = () => {
