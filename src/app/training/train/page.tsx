@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -47,6 +47,7 @@ export default function TrainPage() {
   const [isTraining, setIsTraining] = useState(false)
   const [shellOutput, setShellOutput] = useState<string[]>([])
   const [trainingModel, setTrainingModel] = useState<string | null>(null)
+  const websocketRef = useRef<WebSocket | null>(null);
   const [uploadProgress, setUploadProgress] = useState<{ [key: string]: number }>({
     imagesZip: 0,
     jsonFile: 0,
@@ -63,10 +64,59 @@ export default function TrainPage() {
       setTrainingModel(null)
     }
   }, [imagesZip, jsonFile])
+  useEffect(() => {
+    const startTraining = () => {
+      setShellOutput([`Starting ${trainingModel} training...`]);
+      console.log("Training started");
+
+      websocketRef.current = new WebSocket('ws://url'); 
+
+      websocketRef.current.onopen = () => {
+        console.log('WebSocket connection opened');
+        websocketRef.current?.send(JSON.stringify({ action: 'startTraining', model: trainingModel }));
+      };
+
+      websocketRef.current.onmessage = (event) => {
+        const message = JSON.parse(event.data);
+        console.log(message);
+        setShellOutput(prev => [...prev, message]);
+      };
+
+      websocketRef.current.onclose = () => {
+        console.log('WebSocket connection closed');
+      };
+
+      websocketRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        toast({
+          title: "Error",
+          description: "An error occurred with the WebSocket connection.",
+          variant: "destructive",
+        });
+        handleStopTraining();
+      };
+    };
+
+    if (isTraining) {
+      startTraining();
+    } else {
+      if (websocketRef.current) {
+        websocketRef.current.close();
+        websocketRef.current = null;
+      }
+    }
+
+    return () => {
+      if (websocketRef.current) {
+        websocketRef.current.close();
+        websocketRef.current = null;
+      }
+    };
+  }, [isTraining, trainingModel]);
   const simulateFileUpload = (file: File, fileType: 'imagesZip' | 'jsonFile') => {
     const totalSize = file.size
     let uploadedSize = 0
-    const chunkSize = 1024 * 1024 // 1MB chunks
+    const chunkSize = 1024 * 1024 * 5 // 1MB chunks
 
     const upload = () => {
       if (uploadedSize < totalSize) {
@@ -93,40 +143,31 @@ export default function TrainPage() {
     }
   }
 
-  const handleStartTraining = async () => {
-    if (!trainingModel) {
+
+
+  const handleStartTraining = () => {
+    if (!trainingModel) { // Replace with your actual file upload check
       toast({
-        title: "Missing Files",
+        title: "Error",
         description: "Please upload at least one file (Images ZIP or JSON) before starting training.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setIsTraining(true)
-    setShellOutput([`Starting ${trainingModel} training...`])
-    // Simulating training process
-    for (let i = 1; i <= epochs; i++) {
-    //   if (!isTraining) break // Check if training has been stopped
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setShellOutput(prev => [...prev, `Epoch ${i}/${epochs} - Loss: ${(Math.random() * 0.5).toFixed(4)} - Accuracy: ${(0.7 + Math.random() * 0.2).toFixed(4)}`])
-    }
-
-    // setIsTraining(false)
-    toast({
-      title: "Training Complete",
-      description: `Your ${trainingModel} model has been successfully trained.`,
-    })
-  }
+    setIsTraining(true);
+  };
 
   const handleStopTraining = () => {
-    setIsTraining(false)
-    setShellOutput(prev => [...prev, "Training stopped by user."])
+    setIsTraining(false);
+    console.log(isTraining);
+    setShellOutput(prev => [...prev, "Training stopped by user."]);
     toast({
       title: "Training Stopped",
       description: "The training process has been stopped.",
-    })
-  }
+    });
+  };
+
 
   return (
     <div className="space-y-6">
